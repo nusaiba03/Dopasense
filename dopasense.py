@@ -1,0 +1,578 @@
+# import streamlit as st
+# import pandas as pd
+# import numpy as np
+# from sklearn.model_selection import train_test_split
+# from sklearn.linear_model import LogisticRegression
+# from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
+# from imblearn.over_sampling import SMOTE
+# from sqlalchemy import create_engine
+# import mysql.connector
+# import bcrypt
+
+# # Initialize session state for login
+# if 'logged_in' not in st.session_state:
+#     st.session_state.logged_in = False
+
+# # # MySQL connection function
+# # def get_connection():
+# #     return mysql.connector.connect(
+# #         host="localhost",
+# #         user="dopasense_app",
+# #         password="qwertyuiop",
+# #         database="DopaSense"
+# #     )
+    
+# # MySQL connection function using SQLAlchemy
+# def get_connection():
+#     # SQLAlchemy connection string
+#     connection_string = "mysql+mysqlconnector://dopasense_app:qwertyuiop@localhost/DopaSense"
+#     engine = create_engine(connection_string)
+#     return engine.connect()
+    
+# # Load patients from MySQL database
+# def load_patients_from_db():
+#     conn = get_connection()
+#     df = pd.read_sql("SELECT * FROM patients", conn)
+#     st.write(df.columns)
+#     conn.close()
+#     return df
+    
+
+
+
+# # Prepare data function
+# @st.cache_data
+# def prepare_data():
+#     df = load_patients_from_db()
+    
+#     # Ensure the target column exists
+#     if "Diagnosis" not in df.columns:
+#         st.error("Error: The 'Diagnosis' column is missing from the dataset!")
+#         return None, None, None, None
+
+#     # Handle missing values
+#     df.fillna(df.select_dtypes(include=np.number).mean(), inplace=True)
+
+#     # Relevant features for model
+#     relevant_features = ["Age", "BMI", "Hypertension", "Diabetes", "MoCA", "FunctionalAssessment"]
+#     if not all(feature in df.columns for feature in relevant_features):
+#         st.error("Error: Some required features are missing from the dataset!")
+#         return None, None, None, None
+    
+#     # Define features and target
+#     X = df[relevant_features]
+#     y = df["Diagnosis"]
+    
+#     # Handle class imbalance
+#     smote = SMOTE(random_state=42)
+#     X_resampled, y_resampled = smote.fit_resample(X, y)
+    
+#     return train_test_split(X_resampled, y_resampled, test_size=0.2, random_state=42)
+
+# # Train Model function
+# @st.cache_resource
+# def train_model(X_train, y_train):
+#     model = LogisticRegression(class_weight='balanced', random_state=42, max_iter=1000)
+#     model.fit(X_train, y_train)
+#     return model
+
+# # Evaluate Model function
+# def evaluate_model(model, X_test, y_test):
+#     predictions = model.predict(X_test)
+#     return accuracy_score(y_test, predictions), precision_score(y_test, predictions, zero_division=0), recall_score(y_test, predictions, zero_division=0), f1_score(y_test, predictions, zero_division=0), classification_report(y_test, predictions, zero_division=0)
+
+# # Login page
+# def login_page():
+#     st.title("Login")
+#     st.markdown("Welcome back! Please log in to access the DopaSense platform.")
+#     username = st.text_input("Username")
+#     password = st.text_input("Password", type="password")
+#     if st.button("Login"):
+#         if username and password:
+#             conn = get_connection()
+#             cursor = conn.cursor(dictionary=True)
+
+#             query = "SELECT * FROM users WHERE username = %s"
+#             cursor.execute(query, (username,))
+#             user = cursor.fetchone()
+
+#             cursor.close()
+#             conn.close()
+
+#             if user and bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+#                 st.session_state.logged_in = True
+#                 st.session_state.user = user
+#                 st.success(f"Welcome, {user['name']}!")
+#                 st.rerun()
+#             else:
+#                 st.error("Invalid username or password.")
+#         else:
+#             st.warning("Please enter both username and password.")
+# # Homepage
+# def homepage():
+#     st.title("Welcome to DopaSense")
+#     st.markdown("""
+#     ### Empowering Clinicians in Parkinson’s Care
+#     **DopaSense** is a predictive analytics tool designed to enhance clinical decision-making for Parkinson's disease patients.  
+#     With data-driven insights, you can:
+#     - Predict the likelihood of hospital readmission.
+#     - Access patient-specific trends and analytics.
+#     - Optimize treatment plans to improve patient outcomes.
+
+#     ### Key Features:
+#     - Machine learning-based predictions.
+#     - Intuitive visualizations for clinical insights.
+
+#     Use the sidebar to navigate the app and explore its features.
+#     """)
+
+# # Parkinson’s Info Page
+# def parkinsons_info_page():
+#     st.title("Parkinson’s Disease Information and Analytics")
+#     st.markdown("""
+#     Parkinson’s disease (PD) is a progressive neurological disorder that affects movement and coordination. Understanding the key metrics of Parkinson’s can help healthcare providers deliver better care.
+#     """)
+
+#     st.subheader("Key Insights")
+#     st.write("""
+#     - **Ages Affected**: Primarily 50+ but early-onset cases exist.
+#     - **Common Symptoms**: Tremors, rigidity, bradykinesia, postural instability.
+#     - **Treatment Approaches**: Medications (e.g., Levodopa), physical therapy, and lifestyle adjustments.
+#     """)
+
+#     st.subheader("Patient Trends")
+#     df = load_patients_from_db()
+
+#     st.write("### Data Overview")
+#     st.dataframe(df.head(10))
+
+#     st.write("### Age Distribution of Patients")
+#     age_counts = df['Age'].value_counts().sort_index()
+#     st.bar_chart(age_counts, use_container_width=True)
+#     st.caption("**X-axis:** Age (years) | **Y-axis:** Number of Patients")
+
+#     st.write("### Disease Progression Over Time")
+#     if 'Age' in df.columns and 'UPDRS' in df.columns:
+#         st.line_chart(df.set_index('Age')[['UPDRS']])
+#         st.caption("**X-axis:** Age (years) | **Y-axis:** Unified Parkinson’s Disease Rating Scale (UPDRS) Score")
+#     else:
+#         st.warning("Required columns for disease progression visualization ('Age', 'UPDRS') are missing from the dataset.")
+  
+# # User Profile Page
+# def user_profile():
+#     st.title("User Profile")
+
+#     if 'user' not in st.session_state:
+#         st.error("You must be logged in to view this page.")
+#         return
+
+#     user = st.session_state.user
+
+#     st.markdown(f"""
+#     **Name**: {user['name']}  
+#     **Specialization**: {user['specialization']}  
+#     """)
+
+#     # Editable email field
+#     updated_email = st.text_input("Email", user['email'])
+
+#     # Notes field (optional)
+#     notes = st.text_area("Add Notes", placeholder="Add any notes or preferences here.")
+
+#     if st.button("Save Changes"):
+#         conn = get_connection()
+#         cursor = conn.cursor()
+#         update_query = "UPDATE users SET email = %s WHERE user_id = %s"
+#         cursor.execute(update_query, (updated_email, user['user_id']))
+#         conn.commit()
+#         cursor.close()
+#         conn.close()
+
+#         # Update session state
+#         st.session_state.user['email'] = updated_email
+#         st.success("Profile updated successfully!")
+
+
+        
+# def patient_medical_history():
+#     st.title("Patient Medical History")
+#     st.markdown("Search for a specific patient by their ID, or explore filtered data below.")
+
+#     df = load_patients_from_db()
+
+
+
+#     # Search by Patient ID
+#     search_id = st.number_input("Enter Patient ID to search", min_value=3058, max_value=5162, step=1)
+#     if search_id:
+#         result = df[df["patient_id"] == search_id]
+#         if not result.empty:
+#             st.write("### Patient Data")
+#             st.dataframe(result)
+#         else:
+#             st.warning("No patient found with that ID.")
+
+#     # Add filter section below search
+#     st.subheader("Filter Patient Data")
+#     min_age = st.slider("Minimum Age", 40, 85, 50)
+#     max_age = st.slider("Maximum Age", 40, 85, 70)
+#     filtered_df = df[(df['Age'] >= min_age) & (df['Age'] <= max_age)]
+#     st.write(f"Showing patients aged between {min_age} and {max_age}")
+#     st.dataframe(filtered_df)
+
+
+
+# # Predict Readmission page
+# def predict_readmission():
+#     st.title("Predict Readmission")
+#     age = st.sidebar.slider("Age", 40, 90, 65)
+#     bmi = st.sidebar.slider("BMI", 15, 40, 25)
+#     hypertension = st.sidebar.radio("Hypertension", [0, 1])
+#     diabetes = st.sidebar.radio("Diabetes", [0, 1])
+#     moca = st.sidebar.slider("MoCA Score", 0, 30, 20)
+#     functional_assessment = st.sidebar.slider("Functional Assessment", 0, 10, 5)
+
+#     # Prepare data
+#     X_train, X_test, y_train, y_test = prepare_data()
+#     if X_train is None:
+#         return
+    
+#     model = train_model(X_train, y_train)
+    
+#     patient_data = pd.DataFrame({
+#         "Age": [age], "BMI": [bmi], "Hypertension": [hypertension], "Diabetes": [diabetes], "MoCA": [moca], "FunctionalAssessment": [functional_assessment]
+#     })
+    
+#     prediction = model.predict(patient_data)
+#     prediction_prob = model.predict_proba(patient_data)[0][1]
+    
+#     if prediction[0] == 1:
+#         st.error(f"Prediction: **Readmitted** (Risk: {prediction_prob:.2%})")
+#     else:
+#         st.success(f"Prediction: **Not Readmitted** (Risk: {prediction_prob:.2%})")
+    
+#     # Evaluate the model on the test set
+#     accuracy, precision, recall, f1, report = evaluate_model(model, X_test, y_test)
+    
+#     # Display the evaluation metrics
+#     st.write(f"### Model Evaluation on Test Data")
+#     st.write(f"Accuracy: {accuracy:.2f}")
+#     st.write(f"Precision: {precision:.2f}")
+#     st.write(f"Recall: {recall:.2f}")
+#     st.write(f"F1 Score: {f1:.2f}")
+#     st.write("### Classification Report:")
+#     st.text(report)
+
+
+
+# # Main function
+# def main():
+#     if not st.session_state.logged_in:
+#         login_page()
+#     else:
+#         st.sidebar.title("Navigation")
+#         st.sidebar.markdown(f"Logged in as: **{st.session_state.user['name']}**")
+#         pages = {
+#             "Homepage": homepage,
+#             "Parkinson’s Info & Analytics": parkinsons_info_page,
+#             "User Profile": user_profile,
+#             "Patient Medical History": patient_medical_history,
+#             "Predict Readmission": predict_readmission
+#         }
+#         choice = st.sidebar.radio("Go to", list(pages.keys()))
+#         pages[choice]()
+
+# if __name__ == "__main__":
+#     main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
+from imblearn.over_sampling import SMOTE
+import mysql.connector
+import bcrypt
+
+# Initialize session state for login
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+
+# MySQL connection function
+def get_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="dopasense_app",
+        password="qwertyuiop",
+        database="DopaSense"
+    )
+
+# Prepare data function
+@st.cache_data
+def prepare_data():
+    df = pd.read_csv("parkinsons_disease_data.csv")
+    
+    # Ensure the target column exists
+    if "Diagnosis" not in df.columns:
+        st.error("Error: The 'Diagnosis' column is missing from the dataset!")
+        return None, None, None, None
+
+    # Handle missing values
+    df.fillna(df.select_dtypes(include=np.number).mean(), inplace=True)
+
+    # Relevant features for model
+    relevant_features = ["Age", "BMI", "Hypertension", "Diabetes", "MoCA", "FunctionalAssessment"]
+    if not all(feature in df.columns for feature in relevant_features):
+        st.error("Error: Some required features are missing from the dataset!")
+        return None, None, None, None
+    
+    # Define features and target
+    X = df[relevant_features]
+    y = df["Diagnosis"]
+    
+    # Handle class imbalance
+    smote = SMOTE(random_state=42)
+    X_resampled, y_resampled = smote.fit_resample(X, y)
+    
+    return train_test_split(X_resampled, y_resampled, test_size=0.2, random_state=42)
+
+# Train Model function
+@st.cache_resource
+def train_model(X_train, y_train):
+    model = LogisticRegression(class_weight='balanced', random_state=42, max_iter=1000)
+    model.fit(X_train, y_train)
+    return model
+
+# Evaluate Model function
+def evaluate_model(model, X_test, y_test):
+    predictions = model.predict(X_test)
+    return accuracy_score(y_test, predictions), precision_score(y_test, predictions, zero_division=0), recall_score(y_test, predictions, zero_division=0), f1_score(y_test, predictions, zero_division=0), classification_report(y_test, predictions, zero_division=0)
+
+# Login page
+def login_page():
+    st.title("Login")
+    st.markdown("Welcome back! Please log in to access the DopaSense platform.")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if username and password:
+            conn = get_connection()
+            cursor = conn.cursor(dictionary=True)
+
+            query = "SELECT * FROM users WHERE username = %s"
+            cursor.execute(query, (username,))
+            user = cursor.fetchone()
+
+            cursor.close()
+            conn.close()
+
+            if user and bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                st.session_state.logged_in = True
+                st.session_state.user = user
+                st.success(f"Welcome, {user['name']}!")
+                st.rerun()
+            else:
+                st.error("Invalid username or password.")
+        else:
+            st.warning("Please enter both username and password.")
+# Homepage
+def homepage():
+    st.title("Welcome to DopaSense")
+    st.markdown("""
+    ### Empowering Clinicians in Parkinson’s Care
+    **DopaSense** is a predictive analytics tool designed to enhance clinical decision-making for Parkinson's disease patients.  
+    With data-driven insights, you can:
+    - Predict the likelihood of hospital readmission.
+    - Access patient-specific trends and analytics.
+    - Optimize treatment plans to improve patient outcomes.
+
+    ### Key Features:
+    - Machine learning-based predictions.
+    - Intuitive visualizations for clinical insights.
+
+    Use the sidebar to navigate the app and explore its features.
+    """)
+
+# Parkinson’s Info Page
+def parkinsons_info_page():
+    st.title("Parkinson’s Disease Information and Analytics")
+    st.markdown("""
+    Parkinson’s disease (PD) is a progressive neurological disorder that affects movement and coordination. Understanding the key metrics of Parkinson’s can help healthcare providers deliver better care.
+    """)
+
+    st.subheader("Key Insights")
+    st.write("""
+    - **Ages Affected**: Primarily 50+ but early-onset cases exist.
+    - **Common Symptoms**: Tremors, rigidity, bradykinesia, postural instability.
+    - **Treatment Approaches**: Medications (e.g., Levodopa), physical therapy, and lifestyle adjustments.
+    """)
+
+    st.subheader("Patient Trends")
+    df = pd.read_csv("parkinsons_disease_data.csv")
+
+    st.write("### Data Overview")
+    st.dataframe(df.head(10))
+
+    st.write("### Age Distribution of Patients")
+    age_counts = df['Age'].value_counts().sort_index()
+    st.bar_chart(age_counts, use_container_width=True)
+    st.caption("**X-axis:** Age (years) | **Y-axis:** Number of Patients")
+
+    st.write("### Disease Progression Over Time")
+    if 'Age' in df.columns and 'UPDRS' in df.columns:
+        st.line_chart(df.set_index('Age')[['UPDRS']])
+        st.caption("**X-axis:** Age (years) | **Y-axis:** Unified Parkinson’s Disease Rating Scale (UPDRS) Score")
+    else:
+        st.warning("Required columns for disease progression visualization ('Age', 'UPDRS') are missing from the dataset.")
+  
+# User Profile Page
+def user_profile():
+    st.title("User Profile")
+
+    if 'user' not in st.session_state:
+        st.error("You must be logged in to view this page.")
+        return
+
+    user = st.session_state.user
+
+    st.markdown(f"""
+    **Name**: {user['name']}  
+    **Specialization**: {user['specialization']}  
+    """)
+
+    # Editable email field
+    updated_email = st.text_input("Email", user['email'])
+
+    # Notes field (optional)
+    notes = st.text_area("Add Notes", placeholder="Add any notes or preferences here.")
+
+    if st.button("Save Changes"):
+        conn = get_connection()
+        cursor = conn.cursor()
+        update_query = "UPDATE users SET email = %s WHERE user_id = %s"
+        cursor.execute(update_query, (updated_email, user['user_id']))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # Update session state
+        st.session_state.user['email'] = updated_email
+        st.success("Profile updated successfully!")
+
+
+# # Patient Medical History Page
+# def patient_medical_history():
+#     st.title("Patient Medical History")
+#     st.markdown("""
+#     Access a detailed history for individual patients, including past treatments, symptoms, and trends.
+#     """)
+#     st.subheader("Patient Overview")
+#     df = pd.read_csv("parkinsons_disease_data.csv")
+#     st.dataframe(df)
+
+#     st.subheader("Filter Patient Data")
+#     min_age = st.slider("Minimum Age", 40, 85, 50)
+#     max_age = st.slider("Maximum Age", 40, 85, 70)
+#     filtered_df = df[(df['Age'] >= min_age) & (df['Age'] <= max_age)]
+#     st.write(f"Showing patients aged between {min_age} and {max_age}")
+#     st.dataframe(filtered_df)
+        
+def patient_medical_history():
+    st.title("Patient Medical History")
+    st.markdown("Search for a specific patient by their ID, or explore filtered data below.")
+
+    df = pd.read_csv("parkinsons_disease_data.csv")
+
+    # Search by Patient ID
+    search_id = st.number_input("Enter Patient ID to search", min_value=3058, max_value=5162, step=1)
+    if search_id:
+        result = df[df["PatientID"] == search_id]
+        if not result.empty:
+            st.write("### Patient Data")
+            st.dataframe(result)
+        else:
+            st.warning("No patient found with that ID.")
+
+    # Add filter section below search
+    st.subheader("Filter Patient Data")
+    min_age = st.slider("Minimum Age", 40, 85, 50)
+    max_age = st.slider("Maximum Age", 40, 85, 70)
+    filtered_df = df[(df['Age'] >= min_age) & (df['Age'] <= max_age)]
+    st.write(f"Showing patients aged between {min_age} and {max_age}")
+    st.dataframe(filtered_df)
+
+
+
+# Predict Readmission page
+def predict_readmission():
+    st.title("Predict Readmission")
+    age = st.sidebar.slider("Age", 40, 90, 65)
+    bmi = st.sidebar.slider("BMI", 15, 40, 25)
+    hypertension = st.sidebar.radio("Hypertension", [0, 1])
+    diabetes = st.sidebar.radio("Diabetes", [0, 1])
+    moca = st.sidebar.slider("MoCA Score", 0, 30, 20)
+    functional_assessment = st.sidebar.slider("Functional Assessment", 0, 10, 5)
+
+    # Prepare data
+    X_train, X_test, y_train, y_test = prepare_data()
+    if X_train is None:
+        return
+    
+    model = train_model(X_train, y_train)
+    
+    patient_data = pd.DataFrame({
+        "Age": [age], "BMI": [bmi], "Hypertension": [hypertension], "Diabetes": [diabetes], "MoCA": [moca], "FunctionalAssessment": [functional_assessment]
+    })
+    
+    prediction = model.predict(patient_data)
+    prediction_prob = model.predict_proba(patient_data)[0][1]
+    
+    if prediction[0] == 1:
+        st.error(f"Prediction: **Readmitted** (Risk: {prediction_prob:.2%})")
+    else:
+        st.success(f"Prediction: **Not Readmitted** (Risk: {prediction_prob:.2%})")
+    
+    # Evaluate the model on the test set
+    accuracy, precision, recall, f1, report = evaluate_model(model, X_test, y_test)
+    
+    # Display the evaluation metrics
+    st.write(f"### Model Evaluation on Test Data")
+    st.write(f"Accuracy: {accuracy:.2f}")
+    st.write(f"Precision: {precision:.2f}")
+    st.write(f"Recall: {recall:.2f}")
+    st.write(f"F1 Score: {f1:.2f}")
+    st.write("### Classification Report:")
+    st.text(report)
+
+# Main function
+def main():
+    if not st.session_state.logged_in:
+        login_page()
+    else:
+        st.sidebar.title("Navigation")
+        st.sidebar.markdown(f"Logged in as: **{st.session_state.user['name']}**")
+        pages = {
+            "Homepage": homepage,
+            "Parkinson’s Info & Analytics": parkinsons_info_page,
+            "User Profile": user_profile,
+            "Patient Medical History": patient_medical_history,
+            "Predict Readmission": predict_readmission
+        }
+        choice = st.sidebar.radio("Go to", list(pages.keys()))
+        pages[choice]()
+
+if __name__ == "__main__":
+    main()
