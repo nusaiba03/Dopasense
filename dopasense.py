@@ -25,7 +25,7 @@ def get_connection():
 @st.cache_data
 def prepare_data():
     df = pd.read_csv("parkinsons_disease_data.csv")
-    
+
     # Ensure the target column exists
     if "Diagnosis" not in df.columns:
         st.error("Error: The 'Diagnosis' column is missing from the dataset!")
@@ -34,20 +34,28 @@ def prepare_data():
     # Handle missing values
     df.fillna(df.select_dtypes(include=np.number).mean(), inplace=True)
 
-    # Relevant features for model
-    relevant_features = ["Age", "BMI", "Hypertension", "Diabetes", "MoCA", "FunctionalAssessment"]
+    # Add synthetic symptom features
+    np.random.seed(42)
+    if 'Tremors' not in df.columns:
+        df['Tremors'] = np.random.randint(0, 11, size=len(df))
+    if 'Sleep' not in df.columns:
+        df['Sleep'] = np.random.randint(0, 11, size=len(df))
+    if 'Mood' not in df.columns:
+        df['Mood'] = np.random.randint(0, 11, size=len(df))
+
+    # Define features and target
+    relevant_features = ["Age", "BMI", "Hypertension", "Diabetes", "MoCA", "FunctionalAssessment", "Tremors", "Sleep", "Mood"]
     if not all(feature in df.columns for feature in relevant_features):
         st.error("Error: Some required features are missing from the dataset!")
         return None, None, None, None
-    
-    # Define features and target
+
     X = df[relevant_features]
     y = df["Diagnosis"]
-    
+
     # Handle class imbalance
     smote = SMOTE(random_state=42)
     X_resampled, y_resampled = smote.fit_resample(X, y)
-    
+
     return train_test_split(X_resampled, y_resampled, test_size=0.2, random_state=42)
 
 # Train Model function
@@ -100,7 +108,10 @@ def register_page():
                 conn.close()
 
                 st.success("Account created successfully! Please log in.")
-                st.button("Go to Login Page", on_click=lambda: st.session_state.logged_in == False)  # Simulate redirect to login page
+                if  st.button("Go to Login Page"):
+                    st.session_state.page = "Login"
+                    st.experimental_rerun()
+
         else:
             st.warning("Please fill in all the fields.")
 
@@ -141,21 +152,33 @@ def login_page():
 
 # Homepage
 def homepage():
-    st.title("Welcome to DopaSense")
-    st.markdown("""
-    ### Empowering Clinicians in Parkinson’s Care
-    **DopaSense** is a predictive analytics tool designed to enhance clinical decision-making for Parkinson's disease patients.  
-    With data-driven insights, you can:
-    - Predict the likelihood of hospital readmission.
-    - Access patient-specific trends and analytics.
-    - Optimize treatment plans to improve patient outcomes.
+    st.title("👋 Welcome to DopaSense")
 
-    ### Key Features:
-    - Machine learning-based predictions.
-    - Intuitive visualizations for clinical insights.
-
-    Use the sidebar to navigate the app and explore its features.
+    # Welcome callout
+    st.info("""
+    👩‍⚕️ **DopaSense** empowers clinicians with predictive insights for managing Parkinson’s disease patients.  
+    Use this platform to make smarter, data-driven decisions that enhance patient care.
     """)
+
+    st.markdown("### 🔍 What You Can Do")
+
+    # Feature highlights
+    st.markdown("""
+    - 📈 **Predict Readmission Risk**  
+      Use patient data to estimate the probability of hospital readmission and adjust care plans accordingly.
+      
+    - 📊 **Explore Patient Trends**  
+      View patient demographics and progression patterns with visual analytics.
+
+    - 🧠 **Learn About Parkinson’s**  
+      Access quick-reference insights and support materials for understanding PD.
+
+    - 🗂 **Manage Your Profile**  
+      Update your contact info and track usage right from the platform.
+
+    """)
+
+    st.markdown("---")
 
 # Parkinson’s Info Page
 def parkinsons_info_page():
@@ -250,49 +273,82 @@ def patient_medical_history():
 
 
 
-# Predict Readmission page
 def predict_readmission():
-    st.title("Predict Readmission")
-    age = st.sidebar.slider("Age", 40, 90, 65)
-    bmi = st.sidebar.slider("BMI", 15, 40, 25)
-    hypertension = st.sidebar.radio("Hypertension", [0, 1])
-    diabetes = st.sidebar.radio("Diabetes", [0, 1])
-    moca = st.sidebar.slider("MoCA Score", 0, 30, 20)
-    functional_assessment = st.sidebar.slider("Functional Assessment", 0, 10, 5)
+    st.title("Predict Readmission Risk")
 
-    # Prepare data
+    df = pd.read_csv("parkinsons_disease_data.csv")
+
+    # Search for Patient
+    patient_id = st.selectbox("Select Patient ID", df["PatientID"].unique())
+    patient_row = df[df["PatientID"] == patient_id].squeeze()
+
+    if patient_row is None or patient_row.empty:
+        st.warning("No data found for this patient.")
+        return
+
+    st.subheader("Adjust Patient Parameters")
+
+    # Auto-fill sliders with patient data
+    age = st.slider("Age", 40, 90, int(patient_row["Age"]))
+    bmi = st.slider("BMI", 15.0, 40.0, float(patient_row["BMI"]), step=0.1)
+    hypertension = st.radio("Hypertension", [0, 1], index=int(patient_row["Hypertension"]))
+    diabetes = st.radio("Diabetes", [0, 1], index=int(patient_row["Diabetes"]))
+    moca = st.slider("MoCA Score", 0, 30, int(patient_row["MoCA"]))
+    functional_assessment = st.slider("Functional Assessment", 0, 10, int(patient_row["FunctionalAssessment"]))
+
+    # Add clinician input for current symptoms
+    tremors = st.slider("Tremors Severity (0 = None, 10 = Severe)", 0, 10, 5)
+    sleep = st.slider("Sleep Disturbance (0 = None, 10 = Severe)", 0, 10, 5)
+    mood = st.slider("Mood Changes (0 = Stable, 10 = Unstable)", 0, 10, 5)
+
+    # Prepare model input
+    patient_data = pd.DataFrame({
+        "Age": [age],
+        "BMI": [bmi],
+        "Hypertension": [hypertension],
+        "Diabetes": [diabetes],
+        "MoCA": [moca],
+        "FunctionalAssessment": [functional_assessment],
+        "Tremors": [tremors],
+        "Sleep": [sleep],
+        "Mood": [mood]
+    })
+
+    # Prepare and train model
     X_train, X_test, y_train, y_test = prepare_data()
     if X_train is None:
         return
-    
+
     model = train_model(X_train, y_train)
-    
-    patient_data = pd.DataFrame({
-        "Age": [age], "BMI": [bmi], "Hypertension": [hypertension], "Diabetes": [diabetes], "MoCA": [moca], "FunctionalAssessment": [functional_assessment]
-    })
-    
+
+    # Make prediction
     prediction = model.predict(patient_data)
     prediction_prob = model.predict_proba(patient_data)[0][1]
-    
+
+    # Show result
+    st.markdown("---")
     if prediction[0] == 1:
         st.error(f"Prediction: **Readmitted** (Risk: {prediction_prob:.2%})")
     else:
         st.success(f"Prediction: **Not Readmitted** (Risk: {prediction_prob:.2%})")
-    
-    # Evaluate the model on the test set
+
+    # Print evaluation metrics to terminal
     accuracy, precision, recall, f1, report = evaluate_model(model, X_test, y_test)
-    
-    # Display the evaluation metrics
-    st.write(f"### Model Evaluation on Test Data")
-    st.write(f"Accuracy: {accuracy:.2f}")
-    st.write(f"Precision: {precision:.2f}")
-    st.write(f"Recall: {recall:.2f}")
-    st.write(f"F1 Score: {f1:.2f}")
-    st.write("### Classification Report:")
-    st.text(report)
+
+    print("### Model Evaluation on Test Data ###")
+    print(f"Accuracy: {accuracy:.2f}")
+    print(f"Precision: {precision:.2f}")
+    print(f"Recall: {recall:.2f}")
+    print(f"F1 Score: {f1:.2f}")
+    print(report)
+
+def load_css(file_path):
+    with open(file_path) as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Main function
 def main():
+    load_css("styles/hospital.css")
     # Check if the user is logged in
     if 'logged_in' not in st.session_state or not st.session_state.logged_in:
         # If not logged in, show Login or Register options
@@ -303,6 +359,10 @@ def main():
         elif page == "Register":
             register_page()
     else:
+        # logo
+        st.sidebar.markdown('<div class="sidebar-logo">', unsafe_allow_html=True)
+        st.sidebar.image("assets/logo.png", width=180)
+        st.sidebar.markdown('</div>', unsafe_allow_html=True)
         # If logged in, show the homepage and other pages
         st.sidebar.title("Navigation")
         st.sidebar.markdown(f"Logged in as: **{st.session_state.user['name']}**")
