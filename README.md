@@ -1,18 +1,21 @@
-# Dopasense
+DopaSense: Parkinson’s Readmission Prediction App
 
-Try using google chrome if it doesnt work on safari.
-useername: admin
-password: adminpass
+This is a Streamlit-based web app for clinicians to predict hospital readmission risk for Parkinson’s patients, view patient data, and manage user accounts.
 
-Database:
+Getting Started:
+
+Install Python 3.8+ if not already installed.
+Install required Python packages by running:
+pip install streamlit pandas numpy scikit-learn imbalanced-learn mysql-connector-python bcrypt
+
+Set up MySQL:
+Create the database and tables using the SQL below (you can run this in MySQL Workbench or via CLI):
+
 CREATE DATABASE IF NOT EXISTS DopaSense;
 USE DopaSense;
 
-# Create the app user
 CREATE USER IF NOT EXISTS 'dopasense_app'@'localhost' IDENTIFIED BY 'qwertyuiop'; 
 GRANT ALL PRIVILEGES ON DopaSense.* TO 'dopasense_app'@'localhost';
-
-#Apply the privilege changes
 FLUSH PRIVILEGES;
 
 CREATE TABLE IF NOT EXISTS users (
@@ -23,12 +26,11 @@ CREATE TABLE IF NOT EXISTS users (
     specialization VARCHAR(100),
     email VARCHAR(100)
 );
-#username:admin password:adminpass
+
 INSERT INTO users (username, password_hash, name, specialization, email)
 VALUES ('admin', '$2b$12$duMekjBc1eHcJkjKq2GKsOsAg8RzdDKQh2gcFAXDgwvXjEeb717rO', 'John', 'Neurology', 'admin@example.com');
 
-
-CREATE TABLE patients (
+CREATE TABLE IF NOT EXISTS patients (
     patient_id INT AUTO_INCREMENT PRIMARY KEY,
     age INT NOT NULL,
     bmi FLOAT,
@@ -37,3 +39,25 @@ CREATE TABLE patients (
     moca INT,
     functional_assessment INT
 );
+
+CREATE TABLE IF NOT EXISTS readmission_predictions (
+    prediction_id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT,
+    predicted_label TINYINT(1),
+    prediction_probability FLOAT,
+    prediction_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patients(patient_id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+Clone the repository or copy the project files to your local machine.
+
+Prepare your dataset:
+Place a parkinsons_disease_data.csv file with relevant columns in the same directory.
+
+Run the app:
+streamlit run dopasense.py
+
+Default Login:
+Username: admin
+Password: adminpass
