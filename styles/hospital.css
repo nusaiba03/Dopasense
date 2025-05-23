@@ -1,0 +1,76 @@
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    /* background-color: #1E3A5F; */
+    padding: 1rem;
+    border-right: 2px solid #60A5FA;
+    box-shadow: 3px 0 6px rgba(0, 0, 0, 0.2);
+    color: #FFFFFF;
+    font-family: 'Helvetica', 'Arial', sans-serif;
+}
+
+section[data-testid="stSidebar"] * {
+    color: #FFFFFF !important;
+}
+
+.sidebar-logo {
+    display: flex;
+    justify-content: center;
+    padding: 1rem 0;
+}
+
+/* Main app background */
+.stApp {
+    /* background-color: #E5F0FA; */
+    color: #b5c8e2; /* dark blue for all main content */
+    font-family: 'Helvetica', 'Arial', sans-serif;
+}
+
+/* Ensure all main text stays dark blue */
+.stApp * {
+    color: #aec1da !important;
+}
+
+/* Headings */
+h1, h2, h3 {
+    color: #1E3A5F !important; /* enforce dark blue headings */
+}
+
+/* Buttons */
+.stButton > button {
+    background-color: #2563EB;
+    color: white;
+    border-radius: 8px;
+    padding: 0.6em 1.2em;
+    font-weight: 600;
+    border: none;
+    transition: background-color 0.3s ease;
+}
+
+.stButton > button:hover {
+    background-color: #1D4ED8;
+}
+
+/* Alerts */
+.stAlert[data-testid="stAlert-success"] {
+    background-color: #D1FAE5;
+    color: #065F46;
+}
+
+.stAlert[data-testid="stAlert-error"] {
+    background-color: #FEE2E2;
+    color: #991B1B;
+}
+
+/* Tables */
+table, .stDataFrame {
+    background-color: white;
+    color: #1E3A5F;
+    border-radius: 8px;
+    border: 1px solid #60A5FA;
+}
+
+thead {
+    background-color: #DBEAFE;
+    color: #1E3A5F;
+    font-weight: 600;
+}
